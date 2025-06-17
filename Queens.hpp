@@ -14,10 +14,12 @@
 
 #pragma once
 
-#include <cstdint>
-#include <stack>
-#include <vector>
-#include <unordered_set>
+#include <algorithm>      // std::min_element
+#include <cstdint>        // std::uint64_t, std::uint8_t
+#include <stack>          // std::stack
+#include <unordered_set>  // std::unordered_set
+#include <vector>         // std::vector
+#include <string>         // std::string (needed for to_string)
 
 namespace queens {
 
@@ -117,6 +119,10 @@ namespace queens {
     }
 
     namespace detail {
+
+        /// Avoiding using <numeric> but replaces for i = 0, i < 8, ++i (Coool)
+        constexpr std::uint8_t zero_to_seven[8]{0, 1, 2, 3, 4, 5, 6, 7};
+
         /**
          * @brief Reverse bits in a byte.
          */
@@ -132,7 +138,7 @@ namespace queens {
          */
         constexpr grid flip_horizontal(grid g) {
             grid result = 0;
-            for (int row = 0; row < 8; ++row) {
+            for (const auto row : zero_to_seven) {
                 std::uint8_t line = (g >> (row * 8)) & 0xFF;
                 result |= static_cast<grid>(reverse_byte(line)) << (row * 8);
             }
@@ -144,7 +150,7 @@ namespace queens {
          */
         constexpr grid flip_vertical(grid g) {
             grid result = 0;
-            for (int row = 0; row < 8; ++row) {
+            for (const auto row : zero_to_seven) {
                 grid line = (g >> (row * 8)) & 0xFF;
                 result |= line << ((7 - row) * 8);
             }
@@ -156,8 +162,8 @@ namespace queens {
          */
         constexpr grid flip_diag_main(grid g) {
             grid result = 0;
-            for (int r = 0; r < 8; ++r)
-                for (int c = 0; c < 8; ++c)
+            for (const auto r : zero_to_seven)
+                for (const auto c : zero_to_seven)
                     if ((g >> (r * 8 + c)) & 1ULL)
                         result |= 1ULL << (c * 8 + r);
             return result;
@@ -202,7 +208,7 @@ namespace queens {
                 detail::rotate270(g),
                 detail::flip_horizontal(g),
                 detail::rotate90(detail::flip_horizontal(g)),
-                detail::rotate180(detail::flip_horizontal(g)),
+                detail::flip_vertical(g), ///< equals to rotate180(flip_horizontal(g))
                 detail::rotate270(detail::flip_horizontal(g))
         };
         return *std::min_element(std::begin(forms), std::end(forms));
@@ -220,8 +226,8 @@ namespace queens {
         consteval array generate_kill_table() {
             array result{};
 
-            for (int row = 0; row < 8; ++row) {
-                for (int col = 0; col < 8; ++col) {
+            for (const auto row : zero_to_seven) {
+                for (const auto col : zero_to_seven) {
                     grid self = 1ULL << (row * 8 + col);
                     grid row_mask = get_row(row);
                     grid col_mask = get_col(col);
@@ -232,8 +238,6 @@ namespace queens {
 
             return result;
         }
-
-        constexpr std::uint8_t zero_to_seven[8]{0, 1, 2, 3, 4, 5, 6, 7};
 
         /**
          * @brief Precomputed lookup table for queen attack masks.
@@ -301,6 +305,7 @@ namespace queens {
         }
         return res; // RVO
     }
+
     /**
      * @brief Convert a bitboard grid to a human-readable string representation.
      *
@@ -318,16 +323,25 @@ namespace queens {
      * @return Formatted string with Q for queens and . for empty spaces
      */
     [[maybe_unused]] inline std::string to_string(grid g) {
-        std::string s;
-        for (int row = 0; row < 8; ++row) {
-            for (int col = 0; col < 8; ++col) {
-                s += ((g >> (row * 8 + col)) & 1ULL) ? 'Q' : '.';
-                s += ' ';
+        constexpr const char *layout =
+                ". . . . . . . .\n"
+                ". . . . . . . .\n"
+                ". . . . . . . .\n"
+                ". . . . . . . .\n"
+                ". . . . . . . .\n"
+                ". . . . . . . .\n"
+                ". . . . . . . .\n"
+                ". . . . . . . .\n";
+
+        std::string result(layout);  // std::string will stop at \0, which is after 128 valid chars
+
+        for (uint8_t i = 0; i < 64; ++i) {
+            if ((g >> i) & 1ULL) {
+                result[2 * i] = 'Q';
             }
-            s += '\n';
         }
-        return s;
+
+        return result;
     }
 
 } // namespace queens
-
