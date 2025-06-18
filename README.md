@@ -23,6 +23,22 @@ A **pure header-only**, **zero-dependency**, **bitboard-based** solver for the c
 
 ---
 
+## ⚙️ Implementation Details
+
+- **True value of the `kill_table`**  
+  It’s not just about “pushing computations to compile time.” At runtime, all branch decisions (about 2,057 branches measured, minus 92 base cases) are reduced to a single table lookup, while only 64 bitwise operations are actually performed.
+
+- **Role of `constexpr rotate*` / `flip*` / `canonical`**  
+  These are primarily semantic hints that these functions are pure and side-effect-free, not mandates to perform the work at compile time. Marking them `constexpr` enables LLVM at the IR level to “see through” loops, conditionals, and bitmask operations—allowing aggressive constant propagation, dead-code elimination, loop unrolling, and even replacing handwritten loops with specialized bit-manipulation instructions (e.g., BMI2) for optimal assembly.
+
+-  **`constexpr`-enabled Link Time Optimization**  
+  Since `constexpr` implies both `inline` and `noexcept` for eligible functions, it guarantees no side effects and allows Link Time Optimization to merge, deduplicate, and eliminate any remaining overhead across module boundaries.
+- **Performance on Darwin M3 (`-O3 -march=native`)**  
+  Full enumeration of all 92 solutions takes an average of **26–30 μs**.  
+  Full enumeration of all 12 unique solutions takes an average of **33–48 μs**.  
+
+---
+
 ## 🛠 Requirements
 
 - A **C++20**-compliant compiler (tested with GCC 12+, Clang 14+)
